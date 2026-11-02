@@ -1,0 +1,37 @@
+name: Remover aviso de previa GeriActiva
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/remover-aviso-previa.yml'
+permissions:
+  contents: write
+jobs:
+  corrigir-aviso:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Remover apenas aviso local
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          path = Path("index.html")
+          content = path.read_text(encoding="utf-8")
+          pattern = r'<div style="position:sticky;top:0;z-index:99999;background:#fff0c4;color:#422d00;padding:12px;text-align:center;font:700 14px Arial">PRÉVIA LOCAL PARA REVISÃO — vendas desativadas; imagens e depoimentos da referência não autorizados para publicação\.</div>'
+          content, n = re.subn(pattern, "", content)
+          if n == 0:
+              raise SystemExit("Aviso não encontrado; nenhuma alteração realizada.")
+          if n != 1:
+              raise SystemExit(f"Encontradas {n} ocorrências; interrompendo.")
+          path.write_text(content, encoding="utf-8")
+          print("Aviso removido com sucesso")
+      - name: Commit da correção
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Remover aviso de previa da landing page GeriActiva"
+          git push
