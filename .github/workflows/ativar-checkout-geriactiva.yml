@@ -1,0 +1,39 @@
+name: Atualizar checkout e preco GeriActiva
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/ativar-checkout-geriactiva.yml'
+permissions:
+  contents: write
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar alteracoes pontuais no HTML
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          path = Path("index.html")
+          html = path.read_text(encoding="utf-8")
+          checkout = "https://pay.cakto.com.br/3c9am7e_1271308"
+          pattern = r'<a aria-disabled="true"([^>]*?)href="#" onclick="return false"([^>]*)>'
+          html, n = re.subn(pattern, lambda m: '<a'+m.group(1)+'href="'+checkout+'"'+m.group(2)+'>', html)
+          if n != 3:
+              raise SystemExit(f"Esperados 3 botoes desativados, encontrados {n}. Sem alteracoes.")
+          html, p = re.subn(r'13,90\s*€', 'US$ 15,50', html)
+          if p != 1:
+              raise SystemExit(f"Preco original esperado 1 vez, encontrado {p}. Sem alteracoes.")
+          html = html.replace('<p class="old">Antes: <s>76,08 €</s></p>', '')
+          html = html.replace('<p style="color:var(--green);font-weight:700;margin-bottom:6px">Ahorrás 62,18 €</p>', '')
+          path.write_text(html, encoding="utf-8")
+          print(f"Atualizados {n} botoes e {p} preco.")
+      - name: Commit e push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Integrar checkout Cakto e atualizar preco para USD 15.50"
+          git push
